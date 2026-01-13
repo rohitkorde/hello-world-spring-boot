@@ -172,3 +172,79 @@ spec:
     name: http
   selector:
     app: hello-world
+---
+apiVersion: postgres-operator.crunchydata.com/v1beta1
+kind: PostgresCluster
+metadata:
+  name: hello-postgres
+  namespace: default
+spec:
+  backups:
+    pgbackrest:
+      image: registry.developers.crunchydata.com/crunchydata/crunchy-pgbackrest:ubi8-2.47-2
+      repos:
+      - name: repo1
+        volume:
+          volumeClaimSpec:
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+  image: registry.developers.crunchydata.com/crunchydata/crunchy-postgres:ubi8-16.1-0
+  instances:
+  - affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                postgres-operator.crunchydata.com/cluster: hello-postgres
+                postgres-operator.crunchydata.com/instance-set: pgha1
+            topologyKey: kubernetes.io/hostname
+          weight: 1
+    dataVolumeClaimSpec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+    name: pgha1
+    replicas: 2
+  patroni:
+    dynamicConfiguration:
+      postgresql:
+        parameters:
+          log_connections: "on"
+          log_disconnections: "on"
+        pg_hba:
+        - host all postgres 0.0.0.0/0 scram-sha-256
+        - host all postgres 0.0.0.0/0 md5
+    leaderLeaseDurationSeconds: 30
+    port: 8008
+    syncPeriodSeconds: 10
+  port: 5432
+  postgresVersion: 16
+  proxy:
+    pgBouncer:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  postgres-operator.crunchydata.com/cluster: hello-postgres
+                  postgres-operator.crunchydata.com/role: pgbouncer
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      config:
+        global:
+          client_tls_sslmode: disable
+          server_tls_sslmode: disable
+      image: registry.developers.crunchydata.com/crunchydata/crunchy-pgbouncer:ubi8-1.23-0
+      port: 5432
+      replicas: 2
+  users:
+  - name: postgres
+    password:
+      type: AlphaNumeric
