@@ -210,7 +210,7 @@ spec:
         requests:
           storage: 1Gi
     name: pgha1
-    replicas: 2
+    replicas: 1
   patroni:
     dynamicConfiguration:
       postgresql:
@@ -243,7 +243,7 @@ spec:
           server_tls_sslmode: disable
       image: registry.developers.crunchydata.com/crunchydata/crunchy-pgbouncer:ubi8-1.23-0
       port: 5432
-      replicas: 2
+      replicas: 1
   users:
   - name: postgres
     password:
